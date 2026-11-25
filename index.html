@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sticky Whiteboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="toolbar">
+    <div id="toolbarLeft">
+      <div id="addNoteWrapper">
+        <button id="addNoteBtn">+ New Note ▾</button>
+        <div id="noteTypeMenu">
+          <button data-type="sticky">🗒️ Sticky Note</button>
+          <button data-type="paper">📄 Paper</button>
+          <button data-type="slide">🖥️ Slide</button>
+        </div>
+      </div>
+      <button id="undoBtn" title="Undo (Ctrl+Z)" disabled>↶ Undo</button>
+      <button id="redoBtn" title="Redo (Ctrl+Y)" disabled>↷ Redo</button>
+      <button id="deleteAllBtn">Delete All</button>
+      <button id="darkModeToggle">🌙</button>
+      <div id="connectionStatus"></div>
+      <span id="roomName" title="Board id"></span>
+      <button id="shareBtn" title="Copy the link to this board">🔗 Share</button>
+      <button id="callBtn" title="Join the voice/video call for this board">📞 Join Call</button>
+      <button id="newBoardBtn" title="Open a new empty board in a new tab">＋ New Board</button>
+    </div>
+    <div id="userDots"></div>
+  </div>
+
+  <div id="offlineBanner">Changes are saved locally — they'll sync automatically once you're back online.</div>
+
+  <div id="board">
+    <div id="boardCanvas">
+      <!-- notes and remote cursors get added here by JavaScript -->
+    </div>
+    <div id="zoomLevel">100%</div>
+  </div>
+
+  <script src="socket.io.min.js"></script>
+  <script src="app.js"></script>
+  <script src="call.js"></script>
+  <script>
+    // If call.js is missing (404), say so instead of a dead button
+    if (!window.__callLoaded) {
+      var b = document.getElementById('callBtn');
+      if (b) {
+        b.textContent = '⚠ call.js missing';
+        b.title = 'call.js was not found. Put it in the same folder as index.html, then hard refresh (Ctrl+Shift+R).';
+      }
+    }
+  </script>
+  <div id="callPanel">
+    <div id="callTiles"></div>
+    <div id="callControls">
+      <button id="callMicBtn" title="Mute microphone">🎤</button>
+      <button id="callCamBtn" title="Turn camera off">📷</button>
+      <button id="callLeaveBtn" title="Leave call">📞 Leave</button>
+    </div>
+  </div>
+
+  <div id="nameDialog" class="name-dialog">
+    <div class="name-card">
+      <h2>What should we call you?</h2>
+      <p>Others on this board will see this name next to your cursor.</p>
+      <input id="nameInput" type="text" maxlength="20" placeholder="Your name" autocomplete="off">
+      <button id="nameSaveBtn">Join board</button>
+    </div>
+  </div>
+</body>
+</html>

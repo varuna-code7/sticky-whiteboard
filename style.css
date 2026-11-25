@@ -1,0 +1,670 @@
+@import url('https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  --toolbar-bg: #2B2520;
+  --toolbar-border: #1a1612;
+  --board-bg: #E8DFC8;
+  --board-dot-1: rgba(0,0,0,0.035);
+  --board-dot-2: rgba(0,0,0,0.025);
+  --note-text: #2B2520;
+  --accent: #FFE58A;
+  --accent-hover: #ffd94d;
+}
+
+body.dark {
+  --toolbar-bg: #17140f;
+  --toolbar-border: #000;
+  --board-bg: #2a2622;
+  --board-dot-1: rgba(255,255,255,0.045);
+  --board-dot-2: rgba(255,255,255,0.03);
+  --note-text: #2B2520;
+  --accent: #FFE58A;
+  --accent-hover: #ffd94d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+#toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  background: var(--toolbar-bg);
+  border-bottom: 1px solid var(--toolbar-border);
+}
+
+#toolbar button {
+  padding: 8px 16px;
+  cursor: pointer;
+  background: var(--accent);
+  color: #2B2520;
+  border: none;
+  border-radius: 4px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+#toolbar button:hover {
+  background: var(--accent-hover);
+}
+
+/* --- New Note type picker --- */
+#addNoteWrapper {
+  position: relative;
+}
+
+#noteTypeMenu {
+  display: none;
+  position: absolute;
+  top: 110%;
+  left: 0;
+  background: var(--toolbar-bg);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  padding: 4px;
+  z-index: 100;
+  min-width: 160px;
+}
+
+#noteTypeMenu.open {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+#noteTypeMenu button {
+  background: transparent !important;
+  color: #fff !important;
+  text-align: left;
+  font-weight: 500 !important;
+  padding: 8px 10px !important;
+  border-radius: 4px;
+}
+
+#noteTypeMenu button:hover {
+  background: rgba(255,255,255,0.1) !important;
+}
+
+#undoBtn:disabled,
+#redoBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+#deleteAllBtn {
+  background: #4a3d35 !important;
+  color: #FFB4B4 !important;
+}
+
+#deleteAllBtn:hover {
+  background: #5c4b40 !important;
+}
+
+#darkModeToggle {
+  background: transparent !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,0.25) !important;
+  font-size: 16px !important;
+  padding: 6px 10px !important;
+}
+
+#toolbar button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+#board {
+  position: relative;
+  width: 100vw;
+  height: calc(100vh - 54px);
+  overflow: hidden;
+
+  background-color: var(--board-bg);
+  background-image:
+    radial-gradient(var(--board-dot-1) 1px, transparent 1px),
+    radial-gradient(var(--board-dot-2) 1px, transparent 1px);
+  background-size: 24px 24px, 17px 17px;
+  background-position: 0 0, 8px 8px;
+
+  cursor: grab;
+}
+
+#board.panning {
+  cursor: grabbing;
+}
+
+/* The pannable/zoomable layer — notes and cursors live inside this,
+   #board itself stays fixed as the viewport */
+#boardCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.note {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 170px;
+  min-height: 170px;
+  padding: 14px 14px 10px;
+  cursor: grab;
+  will-change: transform;
+
+  border-radius: 2px;
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.15),
+    0 8px 16px -6px rgba(0,0,0,0.25);
+
+  animation: settle 0.25s ease-out;
+}
+
+@keyframes settle {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; }
+}
+
+.note.dragging {
+  cursor: grabbing;
+  z-index: 1000;
+  box-shadow:
+    0 2px 4px rgba(0,0,0,0.2),
+    0 16px 28px -8px rgba(0,0,0,0.35);
+}
+
+.note.color-0 { background: #FFE58A; }
+.note.color-1 { background: #FFB4B4; }
+.note.color-2 { background: #AEE3D6; }
+.note.color-3 { background: #B8CDEB; }
+
+/* Tape accent — sticky notes only; paper/slide look like placed objects,
+   not pinned ones, so they don't get a tape strip */
+.note.type-sticky::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-2deg);
+  width: 46px;
+  height: 18px;
+  background: rgba(255,255,255,0.55);
+  border: 1px solid rgba(255,255,255,0.3);
+  pointer-events: none;
+}
+
+/* --- Paper: a full page, like a document card --- */
+.note.type-paper {
+  width: 280px;
+  min-height: 360px;
+  background: #FCFBF7 !important;
+  border-radius: 1px;
+  padding: 28px 24px;
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.12),
+    0 10px 24px -8px rgba(0,0,0,0.3);
+}
+
+.note.type-paper textarea {
+  font-family: 'Inter', sans-serif;
+  color: #2B2520;
+  height: 300px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* --- Slide: 16:9 landscape card, like a presentation slide --- */
+.note.type-slide {
+  width: 320px;
+  height: 180px;
+  min-height: 180px;
+  background: #FFFFFF !important;
+  border-radius: 4px;
+  border-top: 5px solid #3a86ff;
+  padding: 18px 20px;
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.12),
+    0 10px 24px -8px rgba(0,0,0,0.3);
+}
+
+.note.type-slide textarea {
+  font-family: 'Inter', sans-serif;
+  color: #2B2520;
+  height: 120px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.note-delete {
+  position: absolute;
+  z-index: 5;
+  top: 4px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: rgba(0,0,0,0.4);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.note-delete:hover {
+  background: rgba(0,0,0,0.12);
+  color: rgba(0,0,0,0.75);
+}
+
+.note textarea {
+  width: 100%;
+  height: 120px;
+  border: none;
+  background: transparent;
+  resize: none;
+  font-family: 'Kalam', cursive;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--note-text);
+}
+
+.note textarea:focus {
+  outline: none;
+}
+
+/* --- Live cursors --- */
+.remote-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50% 50% 50% 0;
+  pointer-events: none;
+  z-index: 2000;
+  will-change: transform;
+  border: 1.5px solid rgba(255,255,255,0.8);
+}
+
+.remote-cursor-label {
+  position: absolute;
+  top: 16px;
+  left: 4px;
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+/* --- Live user avatars in toolbar --- */
+#toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+#userDots {
+  display: flex;
+}
+
+.user-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--toolbar-bg);
+  margin-left: -8px;
+}
+
+.user-dot:first-child {
+  margin-left: 0;
+}
+
+.user-dot-overflow {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--toolbar-bg);
+  margin-left: -8px;
+  background: #4a4238;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- Connection status --- */
+#connectionStatus {
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+#connectionStatus.connected { color: #7CDBB5; }
+#connectionStatus.offline   { color: #FF9B9B; }
+#connectionStatus.syncing   { color: #FFD56A; }
+
+/* --- Offline banner --- */
+#offlineBanner {
+  display: none;
+  background: #3a2f1f;
+  color: #FFD56A;
+  font-size: 13px;
+  padding: 8px 18px;
+  text-align: center;
+}
+
+#offlineBanner.visible {
+  display: block;
+}
+
+/* --- Zoom indicator --- */
+#zoomLevel {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  background: var(--toolbar-bg);
+  color: #fff;
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+
+/* --- Board / room name in toolbar --- */
+#roomName {
+  color: rgba(255,255,255,0.65);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+
+/* --- Top bar: user chips (cursor color + name) --- */
+#userDots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.user-chip.me {
+  cursor: pointer;
+  background: rgba(255,255,255,0.18);
+}
+
+.user-chip-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.85);
+  flex-shrink: 0;
+}
+
+.user-chip-name {
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#userDots .user-dot-overflow {
+  margin-left: 0;
+}
+
+/* Small screens: show only the colored dots (hover/tap for the name) */
+@media (max-width: 800px) {
+  .user-chip-name { display: none; }
+  .user-chip { padding: 3px; }
+}
+
+/* --- Name dialog --- */
+.name-dialog {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+}
+
+.name-dialog.open {
+  display: flex;
+}
+
+.name-card {
+  background: #fff;
+  color: #2B2520;
+  border-radius: 10px;
+  padding: 24px;
+  width: 320px;
+  max-width: 90vw;
+  font-family: 'Inter', sans-serif;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+}
+
+.name-card h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.name-card p {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: #6b6258;
+}
+
+.name-card input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1.5px solid #cfc7bb;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-family: inherit;
+}
+
+.name-card input:focus {
+  outline: none;
+  border-color: #3a86ff;
+}
+
+.name-card button {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  background: #3a86ff;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+
+/* --- Voice / video call panel --- */
+#callPanel {
+  display: none;
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 9000;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(20, 17, 13, 0.88);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  max-width: calc(100vw - 32px);
+}
+
+#callPanel.open {
+  display: flex;
+}
+
+#callTiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 352px; /* two tiles per row */
+}
+
+.call-tile {
+  position: relative;
+  width: 168px;
+  height: 126px;
+  border: 3px solid #888; /* color is set from the user's cursor color */
+  border-radius: 8px;
+  overflow: hidden;
+  background: #111;
+}
+
+.call-tile video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.call-tile.local video {
+  transform: scaleX(-1); /* mirror yourself, like a mirror */
+}
+
+.call-tile.failed::after {
+  content: 'Connection failed';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+  font-size: 12px;
+}
+
+.call-tile-name {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  max-width: calc(100% - 8px);
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+#callControls {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+#callControls button {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+}
+
+#callControls button:hover:not(:disabled) {
+  background: rgba(255,255,255,0.28);
+}
+
+#callControls button.off {
+  background: #c0392b; /* red = muted / camera off */
+}
+
+#callControls button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+#callControls #callLeaveBtn {
+  background: #c0392b;
+  font-weight: 600;
+}
+
+#callBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (max-width: 500px) {
+  .call-tile { width: 140px; height: 105px; }
+  #callTiles { max-width: 296px; }
+}
+
+
+/* --- Call message bar --- */
+#callToast {
+  display: none;
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10001;
+  max-width: min(520px, 92vw);
+  padding: 10px 16px;
+  background: #2B2520;
+  color: #fff;
+  border-left: 4px solid #FFD56A;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+#callToast.show {
+  display: block;
+}
+
+
+.call-tile-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: 12px;
+  pointer-events: none;
+}
